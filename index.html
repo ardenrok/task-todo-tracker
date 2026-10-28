@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Трекер задач</title>
+  <style>
+    :root {
+      --bg: #f1f3f7;
+      --card: #ffffff;
+      --text: #23252b;
+      --muted: #9aa0ab;
+      --accent: #4f6ef7;
+      --accent-soft: #eceffc;
+      --danger: #e5534b;
+      --border: #e6e8ee;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      padding: 32px 16px;
+    }
+
+    .app {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: 0 8px 28px rgba(35, 37, 43, 0.07);
+      width: 100%;
+      max-width: 520px;
+      padding: 24px;
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 18px;
+    }
+
+    /* --- Форма добавления --- */
+    .add-form {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .add-form input {
+      flex: 1;
+      min-width: 0;
+      padding: 10px 12px;
+      font-size: 15px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+
+    .add-form input:focus {
+      border-color: var(--accent);
+    }
+
+    .add-form button {
+      padding: 10px 16px;
+      font-size: 15px;
+      border: none;
+      border-radius: 8px;
+      background: var(--accent);
+      color: #fff;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.15s;
+    }
+
+    .add-form button:hover {
+      background: #3d5ce5;
+    }
+
+    /* --- Фильтры и очистка --- */
+    .toolbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+
+    .filters {
+      display: flex;
+      gap: 4px;
+    }
+
+    .filters button,
+    .clear-btn {
+      font-size: 13px;
+      padding: 6px 10px;
+      border: none;
+      border-radius: 7px;
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .filters button:hover {
+      background: var(--accent-soft);
+      color: var(--text);
+    }
+
+    .filters button.active {
+      background: var(--accent-soft);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .clear-btn {
+      color: var(--muted);
+    }
+
+    .clear-btn:hover:not(:disabled) {
+      color: var(--danger);
+      background: #fdf0ef;
+    }
+
+    .clear-btn:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
+    /* --- Список задач --- */
+    .task-list {
+      list-style: none;
+    }
+
+    .task-list li {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 8px;
+      border-radius: 8px;
+      transition: background 0.15s;
+    }
+
+    .task-list li:hover {
+      background: #f7f8fb;
+    }
+
+    .task-list li + li {
+      border-top: 1px solid var(--border);
+    }
+
+    .task-list input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    .task-text {
+      flex: 1;
+      min-width: 0;
+      overflow-wrap: break-word;
+    }
+
+    .task-list li.done .task-text {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+
+    .task-delete {
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      font-size: 15px;
+      width: 28px;
+      height: 28px;
+      border-radius: 7px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, color 0.15s;
+    }
+
+    .task-delete:hover {
+      background: #fdf0ef;
+      color: var(--danger);
+    }
+
+    /* --- Пустое состояние --- */
+    .empty {
+      text-align: center;
+      color: var(--muted);
+      font-size: 14px;
+      padding: 28px 0 16px;
+    }
+
+    @media (max-width: 420px) {
+      .app {
+        padding: 18px 14px;
+      }
+
+      .toolbar {
+        justify-content: center;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <h1>Трекер задач</h1>
+
+    <form class="add-form" id="addForm">
+      <input type="text" id="taskInput" placeholder="Новая задача…" autocomplete="off" aria-label="Название задачи">
+      <button type="submit">Добавить</button>
+    </form>
+
+    <div class="toolbar">
+      <div class="filters" id="filters">
+        <button type="button" data-filter="all" class="active">Все</button>
+        <button type="button" data-filter="active">Активные</button>
+        <button type="button" data-filter="done">Выполненные</button>
+      </div>
+      <button type="button" class="clear-btn" id="clearDone" disabled>Очистить выполненные</button>
+    </div>
+
+    <ul class="task-list" id="taskList"></ul>
+    <p class="empty" id="emptyMessage" hidden></p>
+  </main>
+
+  <script>
+    'use strict';
+
+    // Состояние приложения (только в памяти, без localStorage — по плану)
+    let tasks = [];
+    let currentFilter = 'all';
+    let nextId = 1;
+
+    const addForm = document.getElementById('addForm');
+    const taskInput = document.getElementById('taskInput');
+    const taskList = document.getElementById('taskList');
+    const emptyMessage = document.getElementById('emptyMessage');
+    const filtersBox = document.getElementById('filters');
+    const clearDoneBtn = document.getElementById('clearDone');
+
+    // ---------- Действия ----------
+
+    function addTask(text) {
+      const trimmed = text.trim();
+      if (!trimmed) return;
+      tasks.push({ id: nextId++, text: trimmed, done: false });
+      render();
+    }
+
+    function toggleTask(id) {
+      const task = tasks.find((t) => t.id === id);
+      if (task) {
+        task.done = !task.done;
+        render();
+      }
+    }
+
+    function deleteTask(id) {
+      tasks = tasks.filter((t) => t.id !== id);
+      render();
+    }
+
+    function clearCompleted() {
+      tasks = tasks.filter((t) => !t.done);
+      render();
+    }
+
+    function setFilter(filter) {
+      currentFilter = filter;
+      for (const btn of filtersBox.querySelectorAll('button')) {
+        btn.classList.toggle('active', btn.dataset.filter === filter);
+      }
+      render();
+    }
+
+    // ---------- Отрисовка ----------
+
+    function escapeHtml(str) {
+      const map = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
+      return str.replace(/[&<>"']/g, (ch) => map[ch]);
+    }
+
+    function render() {
+      const visible = tasks.filter((t) => {
+        if (currentFilter === 'active') return !t.done;
+        if (currentFilter === 'done') return t.done;
+        return true;
+      });
+
+      taskList.innerHTML = visible.map((t) => `
+        <li data-id="${t.id}" class="${t.done ? 'done' : ''}">
+          <input type="checkbox" ${t.done ? 'checked' : ''} aria-label="Отметить выполненной">
+          <span class="task-text">${escapeHtml(t.text)}</span>
+          <button type="button" class="task-delete" aria-label="Удалить задачу" title="Удалить">✕</button>
+        </li>
+      `).join('');
+
+      if (visible.length > 0) {
+        emptyMessage.hidden = true;
+      } else {
+        emptyMessage.hidden = false;
+        emptyMessage.textContent = tasks.length === 0
+          ? 'Пока пусто. Добавьте первую задачу!'
+          : 'В этом фильтре задач нет.';
+      }
+
+      const hasDone = tasks.some((t) => t.done);
+      clearDoneBtn.disabled = !hasDone;
+    }
+
+    // ---------- События ----------
+
+    addForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      addTask(taskInput.value);
+      taskInput.value = '';
+      taskInput.focus();
+    });
+
+    // Делегирование: чекбокс (change) и кнопка удаления (click)
+    taskList.addEventListener('change', (e) => {
+      if (e.target.matches('input[type="checkbox"]')) {
+        toggleTask(Number(e.target.closest('li').dataset.id));
+      }
+    });
+
+    taskList.addEventListener('click', (e) => {
+      if (e.target.closest('.task-delete')) {
+        deleteTask(Number(e.target.closest('li').dataset.id));
+      }
+    });
+
+    filtersBox.addEventListener('click', (e) => {
+      const btn = e.target.closest('button[data-filter]');
+      if (btn) setFilter(btn.dataset.filter);
+    });
+
+    clearDoneBtn.addEventListener('click', clearCompleted);
+
+    // Первый рендер
+    render();
+  </script>
+</body>
+</html>
